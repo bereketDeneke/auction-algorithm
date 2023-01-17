@@ -35,7 +35,7 @@ artists = ['Picasso', 'Rembrandt', 'Van_Gogh', 'Da_Vinci']
 game_info = []
 check_round = 0
 def determinebid(itemsinauction:list, winnerarray:list, winneramount:list, numberbidders:int, players:list, mybidderid:str, artists:list, standings:dict, round:int):
-  return random.randint(30,35) if itemsinauction[round] in ['Pcasso'] else 0
+  return random.randint(30,35) if itemsinauction[round] in ['Picasso'] else 0
 
 mybidderid = "Bereket_Hanzalla" #input("Input team / player name : ").strip()  # this is the only thing that distinguishes the clients 
 while len(mybidderid) == 0 or ' ' in mybidderid:
