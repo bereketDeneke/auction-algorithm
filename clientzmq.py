@@ -9,23 +9,14 @@ import os
 import platform
 
 
-
 # # to act as a client
 port = "50018"              # The server port
 context = zmq.Context()
 print ("Connecting to server...")
 socket = context.socket(zmq.REQ)
 socket.connect ("tcp://localhost:%s" % port)
-# to act as a client
-# port = "15435"              # The server port
-# context = zmq.Context()
-# print ("Connecting to server...")
-# socket = context.socket(zmq.REQ)
-# socket.connect ("tcp://0.tcp.ngrok.io:%s" % port)
-
 
 # APPLICATION
-
 partnerid = -1 # no partner
 numberbidders = 0 # will be given by server
 artists = ['Picasso', 'Rembrandt', 'Van_Gogh', 'Da_Vinci']
@@ -34,10 +25,49 @@ artists = ['Picasso', 'Rembrandt', 'Van_Gogh', 'Da_Vinci']
 # you need to change this to do something much more clever
 game_info = []
 check_round = 0
-def determinebid(itemsinauction:list, winnerarray:list, winneramount:list, numberbidders:int, players:list, mybidderid:str, artists:list, standings:dict, round:int):
-  return random.randint(30,35) if itemsinauction[round] in ['Picasso'] else 0
 
-mybidderid = "Bereket_Hanzalla" #input("Input team / player name : ").strip()  # this is the only thing that distinguishes the clients 
+check_round = 0
+curr_round_art = ""
+def determinebid(itemsinauction:list, winnerarray:list, winneramount:list, numberbidders:int, players:list, mybidderid:str, artists:list, standings:dict, round:int):
+  total_bid_round = 3 
+  check_range = 25 if numberbidders > 5 else 15
+  global check_round
+  global curr_round_art
+  
+  try:
+    if round % check_range == 0:
+      if check_round >= len(itemsinauction):
+        typearray = itemsinauction[len(itemsinauction) - check_range: ]
+      else:
+        typearray = itemsinauction[check_round: sum([check_round, check_range])]
+    
+      # counting the number of items
+      item_freq = [typearray.count(item) for item in artists]
+      
+      # calculating the average distance of the items in auction
+      mean = lambda f: sum(f) / len(f) if len(f) > 0 else 10000 
+      xcute = lambda x: mean([i for i in range(len(typearray)) if typearray[i] == x and item_freq[artists.index(x)] >= total_bid_round])
+      item_destr = [xcute(item) for item in artists]
+      
+      # the art/item we are bidding for
+      curr_round_art = artists[item_destr.index(min(item_destr))]
+
+      # adjust the range if it can't bid for at least one item during the first check_range rounds
+      if standings[mybidderid][curr_round_art] == 0 and (round + 1) >= check_range:
+        check_round += check_range
+
+    if curr_round_art == itemsinauction[round]:
+      return min(int(100//3) + (curr_round_art == itemsinauction[round] and standings[mybidderid][curr_round_art] == 0), moneyleft)
+    
+    # blocking the opponent
+    for standing in standings.keys():
+      if standings[standing][itemsinauction[round]] >= 2: return random.randint(6, 13)
+    return 0
+  except Exception as er:
+    print("Error ", str(er))
+    return 0 
+ 
+mybidderid = "Hunters"
 while len(mybidderid) == 0 or ' ' in mybidderid:
   mybidderid = input("You input an empty string or included a space in your name which is not allowed (_ or / are all allowed)\n for example Emil_And_Nischal is okay\nInput team / player name: ").strip()
 
@@ -62,8 +92,6 @@ while(getlistflag == 1):
     getlistflag = 0
     numberbidders = int(x[0])
     itemsinauction = x[1:]
-  else:
-    time.sleep(2)
 
 while True:
   socket.send((str(mybidderid) + ' ').encode())
@@ -96,19 +124,16 @@ while(continueflag == 1):
   #sleep before sending the bid to make sure the server is ready, currently it's at a very big value 1
   #this should make it safe for any speed of computers or internet, but can probably be lower as I have had
   #it working on Wifi with my computer at 0.2
-  time.sleep(1)
   socket.send((str(mybidderid) + " " + str(bid)).encode())
   while(bidflag == 1):
     # print "Have sent data from ", str(mybidderid)
     data = socket.recv(5024)
     x = (data.decode("utf-8")).split(" ")
-    print(x)
     # print "Have received response at ", str(mybidderid), " of: ", ' '.join(x)
     if(x[0] != "Not"):
       bidflag = 0
     else:
       print("exception")
-      time.sleep(2)
 
 
   resultflag = 1
